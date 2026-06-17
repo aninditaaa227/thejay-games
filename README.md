@@ -94,5 +94,7 @@ We aim to build a living library of lightweight browser games:
 
 By submitting (including uploading, committing, or contributing in any form) to this repository, you explicitly agree that your submission may be published, distributed, and displayed on **The Jay Network Games platform (https://games.thejaynetwork.com)**.
 
+A merged PR does not necessarily mean it will be listed on Games.
+
 All contributors acknowledge and grant permission for their submitted content to be used and hosted on The Jay Network Games without limitation, including for public display and distribution.
 
