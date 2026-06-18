@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Cyber-Grid Lock: Overdrive</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: none;
+        }
+        body {
+            background-color: #05020a;
+            color: #fff;
+            font-family: 'Consolas', 'Segoe UI', monospace;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            width: 100vw;
+            overflow: hidden;
+            padding: 10px;
+        }
+
+        /* Responsive Wrapper */
+        .game-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 95vmin; 
+            max-width: 440px;
+        }
+
+        /* HUD Panel (Level & Score) */
+        .hud-panel {
+            width: 100%;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        .hud-box {
+            background: linear-gradient(135deg, rgba(25, 10, 50, 0.9), rgba(12, 5, 25, 0.95));
+            border: 2px solid #7b2cbf;
+            padding: 6px 4px;
+            border-radius: 12px;
+            text-align: center;
+            box-shadow: 0 0 15px rgba(123, 44, 191, 0.25);
+        }
+        .hud-label {
+            font-size: 0.7rem;
+            color: #b39ddb;
+            letter-spacing: 1px;
+            font-weight: bold;
+            margin-bottom: 2px;
+        }
+        .hud-value {
+            font-size: 1.2rem;
+            font-weight: 900;
+            color: #00f5d4;
+            text-shadow: 0 0 10px rgba(0, 245, 212, 0.5);
+        }
+        .hud-value.score {
+            color: #ff0055;
+            text-shadow: 0 0 10px rgba(255, 0, 85, 0.5);
+        }
+
+        /* Arena Utama Grid */
+        #game-container {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 1 / 1; 
+            background: #0f0521;
+            border-radius: 16px;
+            border: 3px solid #7b2cbf;
+            padding: 8px;
+            box-shadow: 0 0 35px rgba(123, 44, 191, 0.4);
+            box-sizing: border-box;
+        }
+        #game-board {
+            display: grid;
+            gap: 5px;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Grid Cells */
+        .cell {
+            background: #150826;
+            border-radius: 6px;
+            transition: background 0.12s ease, transform 0.1s ease;
+            border: 1px solid rgba(123, 44, 191, 0.15);
+            cursor: pointer;
+        }
+        .cell.visited {
+            background: linear-gradient(135deg, #7b2cbf, #5a189a);
+            box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.7);
+            border-color: #9d4edd;
+            animation: lockPulse 0.2s ease-out;
+            cursor: default;
+        }
+        .cell.player {
+            background: #00f5d4;
+            box-shadow: 0 0 15px #00f5d4, inset 0 0 5px #fff;
+            transform: scale(0.9);
+            z-index: 2;
+            cursor: default;
+        }
+
+        @keyframes lockPulse {
+            0% { transform: scale(1.08); background: #ff0055; }
+            100% { transform: scale(1); }
+        }
+
+        /* Screen Overlays (Start / Game Over) */
+        .overlay {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(6, 2, 14, 0.98);
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between; 
+            align-items: center;
+            z-index: 10;
+            text-align: center;
+            padding: 15px 12px;
+            box-sizing: border-box;
+            backdrop-filter: blur(5px);
+        }
+        .hidden { display: none !important; }
+
+        /* Typography */
+        .overlay h2 {
+            font-size: 1.5rem;
+            font-weight: 900;
+            color: #00f5d4;
+            text-shadow: 0 0 15px rgba(0, 245, 212, 0.6);
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+        .desc-text {
+            color: #b39ddb;
+            font-size: 0.75rem;
+            line-height: 1.3;
+            margin: 2px 0;
+        }
+
+        /* PERBAIKAN UTAMA: Box dengan Scroll internal agar tidak meluber keluar bingkai */
+        .how-to-box {
+            background: rgba(123, 44, 191, 0.08);
+            border: 1px solid rgba(123, 44, 191, 0.35);
+            border-radius: 12px;
+            padding: 10px 12px;
+            width: 100%;
+            max-height: 52%; /* Membatasi tinggi agar tombol di bawah tidak terdorong keluar */
+            overflow-y: auto; /* Otomatis memunculkan scroll jika layar HP pendek */
+            box-sizing: border-box;
+            text-align: left;
+            font-size: 0.75rem;
+            line-height: 1.4;
+            color: #e2d1f9;
+            touch-action: pan-y; /* Mengizinkan scroll vertikal di HP */
+        }
+        
+        /* Mengurangi gaya scrollbar agar terlihat minimalis ala siber */
+        .how-to-box::-webkit-scrollbar {
+            width: 4px;
+        }
+        .how-to-box::-webkit-scrollbar-thumb {
+            background: #7b2cbf;
+            border-radius: 4px;
+        }
+
+        .how-to-box h3 {
+            color: #ff0055;
+            margin-bottom: 5px;
+            font-size: 0.85rem;
+            text-shadow: 0 0 8px rgba(255, 0, 85, 0.3);
+            text-align: center;
+            letter-spacing: 1px;
+            position: sticky;
+            top: 0;
+            background: #06020e;
+        }
+        .control-row {
+            margin-top: 6px;
+            padding-top: 6px;
+            border-top: 1px dashed rgba(123, 44, 191, 0.3);
+            font-weight: bold;
+            color: #00f5d4;
+        }
+
+        /* Action Buttons */
+        .btn {
+            background: linear-gradient(90deg, #ff0055, #7b2cbf);
+            color: #fff;
+            border: none;
+            width: 85%;
+            padding: 10px 0;
+            font-size: 0.95rem;
+            font-weight: bold;
+            border-radius: 25px;
+            cursor: pointer;
+            box-shadow: 0 0 15px rgba(255, 0, 85, 0.4);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: transform 0.1s;
+            margin-top: 5px;
+        }
+        .btn:active { transform: scale(0.96); }
+
+        /* Bottom Footer */
+        .footer-tips {
+            margin-top: 10px;
+            font-size: 0.7rem;
+            color: #4c3d6a;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="game-wrapper">
+        <div class="hud-panel">
+            <div class="hud-box">
+                <div class="hud-label">NETWORK LAYER</div>
+                <div class="hud-value" id="lblLevel">1</div>
+            </div>
+            <div class="hud-box">
+                <div class="hud-label">TOTAL SCORE</div>
+                <div class="hud-value score" id="lblScore">0</div>
+            </div>
+        </div>
+
+        <div id="game-container">
+            <div id="game-board"></div>
+
+            <div id="startScreen" class="overlay">
+                <h2>Cyber-Grid Lock</h2>
+                <p class="desc-text">Infiltrate the server matrix. Encrypt every data node without blocking your own trail.</p>
+                
+                <div class="how-to-box">
+                    <h3>💾 TRANSMISSION PROTOCOLS</h3>
+                    • You control the <b>Neon Cyan Player Square</b>.<br>
+                    • Secure all dark tiles by moving into them.<br>
+                    • Encrypted nodes turn <b>Purple</b> and become forbidden.<br>
+                    • <b>WIN:</b> Secure 100% of the grid nodes to earn <b>+50 Score</b>.<br>
+                    • <b>LOSE:</b> Getting completely trapped with no available moves.
+                    
+                    <div class="control-row">
+                        🎮 CONTROLS:<br>
+                        • LAPTOP/PC: Use Arrow Keys or W-A-S-D to move.<br>
+                        • MOBILE/HP: Tap directly on any adjacent square!
+                    </div>
+                </div>
+
+                <button class="btn" id="btnStart">Initialize Hack</button>
+            </div>
+
+            <div id="gameOverScreen" class="overlay hidden">
+                <h2 id="overTitle" style="color: #ff0055; text-shadow: 0 0 15px #ff0055;">Signal Lost</h2>
+                <p class="desc-text" id="overDesc">System locked down. Your cyberware sequence got trapped inside the grid array.</p>
+                
+                <div class="how-to-box" style="text-align: center; border-color: #ff0055; background: rgba(255, 0, 85, 0.04); overflow: hidden;">
+                    <span style="color:#b39ddb; font-size: 0.8rem; letter-spacing: 1px;">FINAL DATA SCORE MATRIX:</span><br>
+                    <span style="font-size: 2rem; font-weight: 900; color: #ff0055; text-shadow: 0 0 15px rgba(255,0,85,0.4);" id="finalScore">0</span>
+                </div>
+
+                <button class="btn" id="btnRetry" style="background: linear-gradient(90deg, #7b2cbf, #00f5d4); color: #05020a; box-shadow: 0 0 20px rgba(0, 245, 212, 0.3);">Reboot Core</button>
+            </div>
+        </div>
+
+        <div class="footer-tips">
+            Secure Mainframe Matrix Encryption v1.1.2
+        </div>
+    </div>
+
+    <script>
+        const board = document.getElementById('game-board');
+        const lblLevel = document.getElementById('lblLevel');
+        const lblScore = document.getElementById('lblScore');
+        
+        const startScreen = document.getElementById('startScreen');
+        const gameOverScreen = document.getElementById('gameOverScreen');
+        const overDesc = document.getElementById('overDesc');
+        const finalScore = document.getElementById('finalScore');
+        
+        const btnStart = document.getElementById('btnStart');
+        const btnRetry = document.getElementById('btnRetry');
+
+        let grid = [];
+        let player = { x: 0, y: 0 };
+        let visitedCount = 0;
+        let score = 0;
+        let currentLevel = 1;
+        let gameActive = false;
+        let gridSize = 5;
+
+        // Sound Synthesis FX
+        let audioCtx = null;
+        function playSfx(freq, type, duration) {
+            try {
+                if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+                let osc = audioCtx.createOscillator();
+                let gain = audioCtx.createGain();
+                osc.type = type;
+                osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                gain.gain.setValueAtTime(0.04, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+                osc.start();
+                osc.stop(audioCtx.currentTime + duration);
+            } catch(e) {}
+        }
+
+        function initLevel() {
+            board.innerHTML = '';
+            grid = [];
+            visitedCount = 1;
+
+            gridSize = Math.min(5 + Math.floor((currentLevel - 1) / 2), 8);
+            board.style.gridTemplateColumns = `repeat(${gridSize}, 1fr)`;
+            board.style.gridTemplateRows = `repeat(${gridSize}, 1fr)`;
+            
+            player.x = Math.floor(Math.random() * gridSize);
+            player.y = Math.floor(Math.random() * gridSize);
+
+            for (let y = 0; y < gridSize; y++) {
+                grid[y] = [];
+                for (let x = 0; x < gridSize; x++) {
+                    const cellEl = document.createElement('div');
+                    cellEl.className = 'cell';
+                    board.appendChild(cellEl);
+                    
+                    cellEl.addEventListener('pointerdown', (e) => {
+                        e.preventDefault();
+                        handleCellClick(x, y);
+                    });
+
+                    grid[y][x] = {
+                        el: cellEl,
+                        visited: (x === player.x && y === player.y)
+                    };
+                }
+            }
+            
+            updateRender();
+            gameActive = true;
+        }
+
+        function updateRender() {
+            for (let y = 0; y < gridSize; y++) {
+                for (let x = 0; x < gridSize; x++) {
+                    let cell = grid[y][x];
+                    cell.el.className = 'cell';
+                    if (cell.visited) cell.el.classList.add('visited');
+                    if (x === player.x && y === player.y) cell.el.classList.add('player');
+                }
+            }
+            lblLevel.innerText = currentLevel;
+            lblScore.innerText = score;
+        }
+
+        function handleCellClick(targetX, targetY) {
+            if (!gameActive) return;
+            
+            let dx = targetX - player.x;
+            let dy = targetY - player.y;
+
+            if ((Math.abs(dx) === 1 && dy === 0) || (Math.abs(dy) === 1 && dx === 0)) {
+                move(dx, dy);
+            }
+        }
+
+        function move(dx, dy) {
+            if (!gameActive) return;
+
+            let targetX = player.x + dx;
+            let targetY = player.y + dy;
+
+            if (targetX >= 0 && targetX < gridSize && targetY >= 0 && targetY < gridSize) {
+                if (!grid[targetY][targetX].visited) {
+                    player.x = targetX;
+                    player.y = targetY;
+                    grid[player.y][player.x].visited = true;
+                    visitedCount++;
+                    
+                    playSfx(440 + (visitedCount * 25), 'sine', 0.07);
+                    updateRender();
+                    checkGameState();
+                } else {
+                    playSfx(140, 'sawtooth', 0.08);
+                }
+            }
+        }
+
+        function checkGameState() {
+            let totalCells = gridSize * gridSize;
+
+            if (visitedCount === totalCells) {
+                gameActive = false;
+                score += 50; 
+                currentLevel++;
+                playSfx(880, 'triangle', 0.25);
+                setTimeout(() => {
+                    initLevel();
+                }, 350);
+                return;
+            }
+
+            const moves = [[0,1], [0,-1], [1,0], [-1,0]];
+            let hasValidMove = false;
+
+            for (let [mx, my] of moves) {
+                let cx = player.x + mx;
+                let cy = player.y + my;
+                if (cx >= 0 && cx < gridSize && cy >= 0 && cy < gridSize) {
+                    if (!grid[cy][cx].visited) {
+                        hasValidMove = true;
+                        break;
+                    }
+                }
+            }
+
+            if (!hasValidMove) {
+                gameActive = false;
+                playSfx(90, 'sawtooth', 0.45);
+                finalScore.innerText = score;
+                let completionPct = Math.floor((visitedCount / totalCells) * 100);
+                overDesc.innerText = `Mainframe matrix breach! Encrypted sequence index: ${completionPct}%.`;
+                gameOverScreen.classList.remove('hidden');
+            }
+        }
+
+        window.addEventListener('keydown', e => {
+            if (!gameActive) return;
+            const key = e.key.toLowerCase();
+            if (key === 'arrowup' || key === 'w') { e.preventDefault(); move(0, -1); }
+            if (key === 'arrowdown' || key === 's') { e.preventDefault(); move(0, 1); }
+            if (key === 'arrowleft' || key === 'a') { e.preventDefault(); move(-1, 0); }
+            if (key === 'arrowright' || key === 'd') { e.preventDefault(); move(1, 0); }
+        });
+
+        btnStart.addEventListener('click', () => {
+            startScreen.classList.add('hidden');
+            score = 0;
+            currentLevel = 1;
+            initLevel();
+        });
+
+        btnRetry.addEventListener('click', () => {
+            gameOverScreen.classList.add('hidden');
+            score = 0;
+            currentLevel = 1;
+            initLevel();
+        });
+    </script>
+</body>
+</html>
